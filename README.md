@@ -1,13 +1,10 @@
 
-# CRUD APP IN GO
+# AUTH APP IN GO
 
-APIs in Go lang for database operation like database connection, add data, fetch data, update data & delete data
+APIs in Go lang for database operation like database connection, add data, fetch data, update data, delete data and also upload image in local directory as well as on AWS S3.
 
 
 ## Run Locally
-
-Clone the project
-
 
 Start the server
 
@@ -20,9 +17,9 @@ Start the server
 
 **Language:** GO
 
-**Liabries:** Gin, Gorm, godotenv
-
 **Database:** Postgres
+
+**Liabries:** Gin, Gorm, godotenv, go-jwt, aws-sdk-go
 
 
 
