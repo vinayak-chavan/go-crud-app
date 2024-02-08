@@ -1,0 +1,19 @@
+<html>
+  <h2>Hello World</h2>
+  <body>
+
+    {{ if.image }}
+      <img src="{{ .image }}"/>
+    {{ end }}
+
+    <form action="/" method="POST" enctype="multipart/form-data">
+      <input type="file" name="image">
+      <input type="submit">
+
+        {{ if.error }}
+        <p> {{ .error }} </p>
+        {{ end }}
+
+    </form>
+  </body>
+</html>
