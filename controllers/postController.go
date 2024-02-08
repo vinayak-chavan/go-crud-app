@@ -1,81 +1,117 @@
 package controllers
 
 import (
+	"errors"
 	"go-crud-app/initializers"
 	"go-crud-app/models"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func PostsCreate(c *gin.Context) {
 	var body struct {
-		Body  string
-		Title string
+		Body  string `json:"body"`
+		Title string `json:"title"`
 	}
 
-	c.Bind(&body)
-
-	post := models.Post{Title: body.Title, Body: body.Body}
-	result := initializers.DB.Create(&post)
-
-	if result.Error != nil {
-		c.Status(400)
+	if err := c.Bind(&body); err != nil {
+		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	c.JSON(201, gin.H{
+	post := models.Post{Title: body.Title, Body: body.Body}
+	if err := initializers.DB.Create(&post).Error; err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
 		"data": post,
 	})
 }
 
 func GetPosts(c *gin.Context) {
 	var posts []models.Post
-	initializers.DB.Find(&posts)
+	if err := initializers.DB.Find(&posts).Error; err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"data": posts,
 	})
 }
 
 func GetPostById(c *gin.Context) {
 	id := c.Param("id")
-	var post models.Post
-	initializers.DB.First(&post, id)
 
-	c.JSON(200, gin.H{
-		"data": post,
-	})
+	var post models.Post
+	if err := initializers.DB.First(&post, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": post})
 }
 
 func UpdatePost(c *gin.Context) {
 	id := c.Param("id")
 
+	// Bind request body to a struct
 	var body struct {
-		Body  string
-		Title string
+		Body  string `json:"body"`
+		Title string `json:"title"`
 	}
 
-	c.Bind(&body)
+	if err := c.Bind(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
+	}
+
 	var post models.Post
-	initializers.DB.First(&post, id)
+	if err := initializers.DB.First(&post, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
 
-	initializers.DB.Model(&post).Updates(models.Post{
-		Title: body.Title, 
-		Body: body.Body,
-	})
+	post.Title = body.Title
+	post.Body = body.Body
 
-	c.JSON(200, gin.H{
-		"data": post,
-	})
+	if err := initializers.DB.Save(&post).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update post"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": post})
 }
 
 func DeletePost(c *gin.Context) {
 	id := c.Param("id")
-	var post models.Post
-	initializers.DB.First(&post, id)
 
-	initializers.DB.Model(&post).Delete(&models.Post{}, id)
-	c.JSON(200, gin.H{
-		"data": post,
-	})
+	var post models.Post
+	if err := initializers.DB.First(&post, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	if err := initializers.DB.Delete(&post).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete post"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Post deleted successfully"})
 }
